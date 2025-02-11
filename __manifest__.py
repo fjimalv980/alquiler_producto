@@ -8,6 +8,7 @@
     'data': [
         'security/ir.model.access.csv',
         'views/alquiler_producto_views.xml',
+        'data/cron.xml',
     ],
     'icon': '/alquiler_producto/static/description/icon.png',
     'installable': True,
