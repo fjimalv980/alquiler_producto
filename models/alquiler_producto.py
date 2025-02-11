@@ -1,33 +1,36 @@
 # alquiler_producto/models/alquiler_producto.py
 from odoo import models, fields, api
 from odoo.exceptions import UserError
+
 class AlquilerProducto(models.Model):
     _name = 'alquiler.producto'
-    _description = 'Gestión de Servicio de Alquiler de Producto'
-    _rec_name = 'garantia_id'
-    garantia_id = fields.Many2one('garantia.producto', string='Garantía', required=True)
-    customer_id = fields.Many2one('res.partner', string='Cliente',
-    related='garantia_id.customer_id', store=True)
-    product_id = fields.Many2one('product.product', string='Producto',
-    related='garantia_id.product_id', store=True)
-    fecha_solicitud = fields.Date(string='Fecha de Solicitud',
-    default=fields.Date.context_today, required=True)
-    descripcion = fields.Text(string='Descripción del Problema', required=True)
+    _description = 'Gestión de Alquiler de Productos'
+
+    cliente_id = fields.Many2one('res.partner', string='Cliente', required=True)
+    producto_id = fields.Many2one('product.product', string='Producto', required=True)
+    fecha_inicio = fields.Date(string='Fecha de Inicio', default=fields.Date.context_today, required=True)
+    fecha_fin = fields.Date(string='Fecha de Fin', compute='_compute_fecha_fin', store=True)
     estado = fields.Selection([
-        ('pendiente', 'Pendiente'),
-        ('en_proceso', 'En Proceso'),
-        ('finalizado', 'Finalizado')
-    ], string='Estado', default='pendiente', required=True)
-    fecha_reparacion = fields.Date(string='Fecha de Reparación')
-    costo = fields.Float(string='Costo de Reparación')
-    fecha_termino = fields.Date(string='Fecha de Término')
-    @api.onchange('estado')
-    def _onchange_estado(self):
-        if self.estado == 'en_proceso' and not self.fecha_reparacion:
-            self.fecha_reparacion = fields.Date.context_today(self)
+        ('en_alquiler', 'En Alquiler'),
+        ('entregado', 'Entregado'),
+        ('no_entregado', 'No Entregado')
+    ], string='Estado', default='en_alquiler', required=True)
+    observaciones = fields.Text(string='Observaciones')
+
+    @api.depends('fecha_inicio')
+    def _compute_fecha_fin(self):
+        for record in self:
+            if record.fecha_inicio:
+                record.fecha_fin = fields.Date.add(record.fecha_inicio, days=30)
+
+    @api.onchange('producto_id')
+    def _onchange_producto_id(self):
+        if self.producto_id and self.producto_id.qty_available <= 0:
+            raise UserError('El producto no está disponible para alquiler.')
+
     @api.model
-    def create(self, vals):
-        garantia = self.env['garantia.producto'].browse(vals.get('garantia_id'))
-        if garantia.status != 'valid':
-            raise UserError('No se puede crear un mantenimiento para una garantía expirada.')
-        return super(ServicioMantenimiento, self).create(vals)
+    def _cron_verificar_estado(self):
+        alquileres = self.search([('estado', '=', 'en_alquiler')])
+        for alquiler in alquileres:
+            if alquiler.fecha_fin and fields.Date.today() > alquiler.fecha_fin:
+                alquiler.estado = 'no_entregado'
