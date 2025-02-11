@@ -1,0 +1,3 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_servicio_mantenimiento_admin,servicio_mantenimiento_admin,model_servicio_mantenimiento,sales_team.group_sale_manager,1,1,1,1
+access_servicio_mantenimiento_user,servicio_mantenimiento_user,model_servicio_mantenimiento,base.group_user,1,0,0,0
